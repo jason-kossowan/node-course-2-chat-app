@@ -2,11 +2,6 @@ var socket = io();
 
 socket.on('connect', function () {
     console.log('Connected to server');
-
-    socket.emit('createClientMessage', {
-        to: 'Shafeeq',
-        text: 'Sockets are Shafeeqing awesome!'
-    });
 });
 
 socket.on('disconnect', function () {
