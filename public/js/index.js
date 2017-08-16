@@ -8,14 +8,21 @@ socket.on('disconnect', function () {
     console.log('Disconnected from server');
 });
 
-socket.on('youConnected', function (message) {
-    console.log(message);
-});
-
-socket.on('newClientConnected', function (message) {
-    console.log(message);
-});
-
 socket.on('newServerMessage', function (message) {
     console.log('Received new message from server', message);
+    var li = jQuery('<li></li>');
+    li.text(`${message.from}: ${message.text}`);
+
+    jQuery('#messages').append(li);
+});
+
+jQuery('#message-form').on('submit', function (e) {
+    e.preventDefault();
+
+    socket.emit('createClientMessage', {
+        from: 'User',
+        text: jQuery('[name=message').val()
+    }, function () {
+        // TODO
+    });
 });

@@ -17,16 +17,20 @@ io.on('connection', (socket) => {
     console.log('New user connected');
 
     // socket.emit differs from io.emit in that it is scoped to an individual socket    
-    socket.emit('youConnected',
+    socket.emit('newServerMessage',
         generateMessage('Messaging app', 'Welcome to the messaging app!'));
 
-    socket.broadcast.emit('newClientConnected',
+    // socket.broadcast emits to everyone but sender
+    socket.broadcast.emit('newServerMessage',
         generateMessage('Messaging app', 'New client connected to the messaging app'));
 
-    socket.on('createClientMessage', (message) => {
+    socket.on('createClientMessage', (message, callback) => {
         console.log('Recieved message from client', message);
+        // io.emit differs from socket.emit in that it is scoped globally
         io.emit('newServerMessage',
             generateMessage(message.from, message.text));
+        
+        callback('This is from the server.');
     });
 
     socket.on('disconnect', () => {
