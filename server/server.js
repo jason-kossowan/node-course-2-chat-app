@@ -3,26 +3,46 @@ const http = require('http');
 const express = require('express');
 const socketIO = require('socket.io');
 
-const publicPath = path.join(__dirname, '../public');
 const { generateMessage, generateLocationMessage } = require('./utils/message');
-const port = process.env.PORT || 3000;
+const { isRealString } = require('./utils/validation');
+const { Users } = require('./utils/users');
 
+const publicPath = path.join(__dirname, '../public');
+const port = process.env.PORT || 3000;
 var app = express();
 var server = http.createServer(app);
 var io = socketIO(server);
+var users = new Users();
 
 app.use(express.static(publicPath));
 
 io.on('connection', (socket) => {
     console.log('New user connected');
 
-    // socket.emit differs from io.emit in that it is scoped to an individual socket    
-    socket.emit('newServerMessage',
-        generateMessage('Messaging app', 'Welcome to the messaging app!'));
+    socket.on('join', (params, callback) => {
+        if (!isRealString(params.name) || !isRealString(params.room)) {
+            return callback('Name and room name are required');
+        }
+        
+        socket.join(params.room);
+        users.removeUser(socket.id);
+        users.addUser(socket.id, params.name, params.room);
+        io.to(params.room).emit('updateUserList', users.getUserList(params.room));
+        
+        // io.emit -> io.to(room).emit
+        // socket.broadcast.emit -> socket.broadcast.to(room).emit
+        // socket.emit
 
-    // socket.broadcast emits to everyone but sender
-    socket.broadcast.emit('newServerMessage',
-        generateMessage('Messaging app', 'New client connected to the messaging app'));
+        // socket.emit differs from io.emit in that it is scoped to an individual socket    
+        socket.emit('newServerMessage',
+            generateMessage('Admin', 'Welcome to the messaging app!'));
+
+        // socket.broadcast emits to everyone but sender
+        socket.broadcast.to(params.room).emit('newServerMessage',
+            generateMessage('Admin', `${params.name} joined the room`));
+
+        callback();
+    });
 
     socket.on('createClientMessage', (message, callback) => {
         console.log('Recieved message from client', message);
@@ -38,7 +58,12 @@ io.on('connection', (socket) => {
     });
 
     socket.on('disconnect', () => {
-        console.log('User disconnected');
+        var user = users.removeUser(socket.id);
+
+        if (user) {
+            io.to(user.room).emit('updateUserList', users.getUserList(user.room));
+            io.to(user.room).emit('newServerMessage', generateMessage('Admin', `${user.name} left the room.`));
+        }
     });
 });
 
