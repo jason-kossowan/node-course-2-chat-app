@@ -45,16 +45,20 @@ io.on('connection', (socket) => {
     });
 
     socket.on('createClientMessage', (message, callback) => {
-        console.log('Recieved message from client', message);
+        let user = users.getUser(socket.id);
+
+        if (user && isRealString(message.text)) {
+            io.to(user.room).emit('newServerMessage',
+                generateMessage(user.name, message.text));
+        }
+
         // io.emit differs from socket.emit in that it is scoped globally
-        io.emit('newServerMessage',
-            generateMessage(message.from, message.text));
-        
         callback();
     });
 
     socket.on('createLocationMessage', (coords) => {
-        io.emit('newLocationMessage', generateLocationMessage('ADMIN', coords.latitude, coords.longitude));
+        let user = users.getUser(socket.id);
+        io.to(user.room).emit('newLocationMessage', generateLocationMessage(user.name, coords.latitude, coords.longitude));
     });
 
     socket.on('disconnect', () => {
